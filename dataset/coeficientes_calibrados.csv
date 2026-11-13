@@ -1,0 +1,13 @@
+,estimado,ic90_inf,ic90_sup,usado,ajuste,condicional
+asistencia_hist,1.403,0.966,2.364,1.403,,1.628
+sin_historial,0.276,-0.762,1.152,0.276,,0.32
+carga_cursos,-0.065,-0.655,0.523,-0.065,,-0.076
+veces_llevado_curso,0.291,-0.307,1.153,0.291,,0.337
+uso_recursos_alternativos,-0.037,-0.683,0.466,-0.037,,-0.043
+cruce_horario,-0.405,-0.849,0.024,-0.405,,-0.47
+dispuesto_franja,0.46,0.147,0.942,0.46,,0.534
+virtual,1.349,0.841,2.209,1.349,,1.565
+dificultad_tema,0.7,0.505,1.091,0.7,,0.812
+urgencia,1.665,0.784,2.679,1.665,,1.931
+urgencia_x_promedio_bajo,0.25,-0.821,1.296,0.25,,0.29
+traslado_x_presencial,0.445,-0.443,1.016,0.0,signo opuesto al criterio experto -> 0,0.0

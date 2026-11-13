@@ -1,0 +1,20 @@
+{
+  "estudiantes_reales": 30,
+  "calibracion": 20,
+  "prueba_real": 10,
+  "tau": 5,
+  "beta0": 0.6,
+  "sigma_u": 1.0,
+  "sigma_eps": 0.5,
+  "tasa_semilla_cal": 0.65,
+  "tasa_semilla_test": 0.65,
+  "tasa_sintetica": 0.606,
+  "filas": {
+    "sintetico_train": 7990,
+    "sintetico_test_estudiantes": 2030,
+    "sintetico_test_combinaciones": 370,
+    "semilla_real_prueba": 200,
+    "semilla_real_prueba_combos_no_vistas": 80
+  },
+  "combinaciones_reservadas": "22 de 150"
+}
