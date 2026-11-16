@@ -1,0 +1,113 @@
+DATASET SINTÉTICO — ASISTENCIA A ASESORÍAS (IA 1INF24, GRUPO 6)
+Generado con generador_sintetico.py (semilla aleatoria fija 2026, reproducible).
+
+
+1. QUÉ ARCHIVO USAR PARA QUÉ
+
+  sintetico_train.csv                 Entrenamiento y GridSearchCV. 480 estudiantes simulados,
+                                      7 990 filas. Columna "fold" (0 a 4): pliegues agrupados por
+                                      estudiante. Úsala con PredefinedSplit(train["fold"]).
+  sintetico_test_estudiantes.csv      Prueba 1: 120 estudiantes simulados que no están en train,
+                                      con combinaciones de sesión que sí se vieron.
+  sintetico_test_combinaciones.csv    Prueba 2: los mismos 120 estudiantes de prueba, pero SOLO con
+                                      combinaciones de sesión que no existen en train.
+  semilla_real_prueba.csv             Prueba final con datos reales: 10 estudiantes del formulario
+                                      que el generador NUNCA vio. "combo_reservada" = 1 marca las
+                                      filas con combinaciones que no existen en train (80 de 200).
+  semilla_real_calibracion.csv        Los 20 estudiantes reales usados para calibrar el generador.
+                                      Solo como referencia: NO se usa para evaluar.
+  combinaciones_reservadas.csv        Las 22 combinaciones (de 150) excluidas del entrenamiento.
+  coeficientes_calibrados.csv         βj estimados, intervalos al 90 % (bootstrap por estudiante)
+                                      y valor final usado.
+  validacion_por_escenario.csv        Tasa de asistencia por escenario: generador vs. semilla real.
+  resultados_prueba_rapida.csv        Resultados de verificar_particiones.py (árbol, KNN y línea base).
+  resumen_calibracion.json            τ, β0, σ_u, σ_ε, tamaños y tasas.
+
+
+2. COLUMNAS
+
+  Variables de entrada (Tabla I):
+    promedio_previo, asistencia_hist, carga_cursos, veces_llevado_curso,
+    tiempo_traslado, uso_recursos_alternativos,
+    dia_semana, franja, cruce_horario, dispuesto_franja,
+    modalidad, dificultad_tema, dias_a_evaluacion
+    + sin_historial (indicador de ausencia de asistencia_hist, Sec. D)
+
+  Objetivo: asistio (0/1)
+
+  Columnas auxiliares (NO usarlas como entrada del modelo):
+    id_estudiante  -> para agrupar las particiones
+    fold           -> pliegue de validación cruzada
+    tipo_franja, plazo_tramo, combinacion, combo_reservada -> para analizar resultados
+    fase_ciclo     -> inicio / previo_evaluacion / posterior_evaluacion (solo sintético)
+    p_asistir      -> probabilidad real del generador (solo sintético; útil para analizar,
+                      nunca como entrada: sería darle la respuesta al modelo)
+    escenario, respuesta -> código del formulario y respuesta en 4 niveles (solo semilla real)
+
+  asistencia_hist, dia_semana y franja pueden venir vacías; el pipeline las imputa.
+
+
+3. CÓMO SE EVITA LA FUGA DE INFORMACIÓN
+
+  a) Semilla real dividida por estudiante: 20 calibran el generador y 10 se reservan
+     como prueba final. Los 10 de prueba nunca intervienen en la calibración.
+  b) Datos sintéticos divididos por estudiante: ningún estudiante simulado aparece en dos
+     particiones, y los pliegues de validación cruzada también agrupan por estudiante.
+  c) Combinaciones reservadas: 22 de las 150 combinaciones
+     tipo_franja × plazo × dificultad × modalidad no aparecen en train. Se eligieron de forma
+     que todos los niveles de cada variable sí aparezcan en train (el modelo conoce cada
+     valor, pero no esas combinaciones). Incluyen combinaciones de los escenarios reales
+     E1, E2, E3, E8 y E10, para que la prueba real también tenga casos no vistos.
+  d) Hiperparámetros elegidos solo con train (validación cruzada); las pruebas se usan una
+     única vez al final.
+  verificar_particiones.py comprueba (a)–(c) automáticamente.
+
+
+4. CÓMO SE CALIBRÓ EL GENERADOR (Sec. C)
+
+  - Perfiles: cópula gaussiana con marginales empíricas de la semilla de calibración
+    (mantiene las correlaciones entre variables, como en [3]), con pequeña variación para no
+    copiar valores exactos.
+  - Horario: probabilidad de estar ocupado y de que la franja "acomode", por día y franja,
+    estimadas de las cuadrículas del formulario.
+  - Sesiones: día y franja al azar entre las 18 posibles; modalidad y dificultad (1 a 5) al azar;
+    días a la evaluación según la fase del ciclo (inicio 15–30, previo 1–7, posterior 8–21).
+  - Probabilidad (ec. 3): z = β0 + Σ βj x̃j + u_estudiante + ε, p = 1/(1+e^-z), y ~ Bernoulli(p).
+      · Cercanía como e^(-d/τ), con τ = 5 elegido por verosimilitud.
+      · Interacción cercanía × promedio bajo, como describe el informe.
+      · βj por regresión logística regularizada sobre la semilla de calibración.
+      · Signos de criterio experto: el único coeficiente con signo contrario
+        (tiempo_traslado × presencial) se fijó en 0.
+      · u_estudiante ~ N(0, 1.0²): diferencias estables entre personas; σ_u y β0 se calibraron
+        por simulación para reproducir la tasa global (0.65) y la variación entre estudiantes.
+      · ε ~ N(0, 0.5²) por sesión.
+      · Efecto propio de día y franja (noche −0.25; viernes −0.15; sábado −0.35, en escala
+        logit): la semilla no los identifica, así que se fijaron con criterio experto.
+
+
+5. RESULTADOS DE LA PRUEBA RÁPIDA (verificar_particiones.py)
+
+                                        AUC    F1
+  Árbol, estudiantes nuevos             0.82   0.81
+  Árbol, combinaciones no vistas        0.81   0.82
+  Árbol, semilla real                   0.77   0.78
+  KNN, estudiantes nuevos               0.82   0.82
+  KNN, combinaciones no vistas          0.82   0.80
+  KNN, semilla real                     0.82   0.81
+  Línea base (siempre "asiste")         0.50   0.76–0.81
+
+  El rendimiento en combinaciones no vistas es casi igual al de combinaciones vistas: los
+  modelos generalizan y no memorizan. Ojo: como la clase "asiste" es mayoritaria (~62–65 %),
+  predecir siempre "asiste" ya da un F1 alto. Reporten también AUC y la línea base para que
+  la comparación sea justa.
+
+
+6. LIMITACIONES PARA EL INFORME
+
+  - Semilla de 30 estudiantes; varios βj tienen intervalos amplios (ver coeficientes_calibrados.csv),
+    en especial carga_cursos, uso_recursos_alternativos, veces_llevado_curso y la interacción
+    cercanía × promedio.
+  - La prueba real tiene solo 10 estudiantes (200 filas): sus métricas tienen bastante variación.
+  - Asistencia declarada, no observada.
+  - Los efectos de día y franja son supuestos del generador, no estimaciones de la semilla.
+  - Las etiquetas sintéticas provienen de un modelo definido por el equipo.
